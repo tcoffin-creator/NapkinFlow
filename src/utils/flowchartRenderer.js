@@ -1,7 +1,8 @@
 import rough from 'roughjs';
 
-// Approximate character width for SVG text measurement (in pixels)
-const APPROX_CHAR_WIDTH = 7;
+// Constants for rendering calculations
+const APPROX_CHAR_WIDTH = 7; // Approximate character width for SVG text (canvas uses ctx.measureText for accuracy)
+const EPSILON = 0.01; // Small value for floating point comparisons
 
 /**
  * Render flowchart using RoughJS for hand-drawn napkin style
@@ -134,13 +135,13 @@ export class FlowchartRenderer {
       const halfHeight = fromNode.height / 2;
       
       // Handle vertical and horizontal cases separately to avoid division by zero
-      if (Math.abs(dx) < 0.01) {
+      if (Math.abs(dx) < EPSILON) {
         // Vertical line - use top or bottom edge
         const y = dy > 0 ? fromNode.y + halfHeight : fromNode.y - halfHeight;
         return { x: fromNode.x, y };
       }
       
-      if (Math.abs(dy) < 0.01) {
+      if (Math.abs(dy) < EPSILON) {
         // Horizontal line - use left or right edge
         const x = dx > 0 ? fromNode.x + halfWidth : fromNode.x - halfWidth;
         return { x, y: fromNode.y };
