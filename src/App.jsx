@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import FlowCanvas from './FlowCanvas';
 import { parseWorkflow } from './parser';
+import { generateFlowchartViaProxy } from './ai';
 import './styles.css';
 
 const EXAMPLE_TEXT = 'Start → Qualify lead? yes → Book call; no → Send email → End';
@@ -9,6 +10,7 @@ function App() {
   const [inputText, setInputText] = useState('');
   const [parsedData, setParsedData] = useState({ nodes: [], edges: [] });
   const [svgElement, setSvgElement] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleRender = () => {
     const data = parseWorkflow(inputText);
@@ -118,6 +120,31 @@ function App() {
     img.src = url;
   };
 
+  async function handleAIGenerate() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const prompt = inputText && inputText.trim().length > 0
+        ? inputText.trim()
+        : 'Create a concise 6-step flowchart for a generic small project';
+
+      // generateFlowchartViaProxy calls your /api/generate Pages Function and returns a graph { nodes, edges }
+      const graph = await generateFlowchartViaProxy(prompt);
+
+      // Basic safety check
+      if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
+        throw new Error('Invalid graph returned from AI');
+      }
+
+      setParsedData(graph);
+    } catch (err) {
+      // show a helpful error; if the proxy returned details you'll see them in err.message
+      alert('AI generation failed: ' + (err?.message || String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -135,10 +162,13 @@ function App() {
             rows={4}
           />
           <div className="button-group">
-            <button onClick={handleRender} className="btn btn-primary">
+            <button onClick={handleRender} className="btn btn-primary" disabled={loading}>
               Render
             </button>
-            <button onClick={handleExample} className="btn btn-secondary">
+            <button onClick={handleAIGenerate} className="btn btn-primary" disabled={loading}>
+              {loading ? 'Generating...' : 'AI Generate'}
+            </button>
+            <button onClick={handleExample} className="btn btn-secondary" disabled={loading}>
               Example
             </button>
             <button onClick={exportSVG} className="btn btn-export">
@@ -159,7 +189,7 @@ function App() {
             />
           ) : (
             <div className="placeholder">
-              <p>Enter a workflow description and click "Render" to generate a flowchart</p>
+              <p>Enter a workflow description and click "Render" or use "AI Generate" to let the AI produce one</p>
               <p className="hint">Tip: Use "Example" to see a sample workflow</p>
             </div>
           )}
