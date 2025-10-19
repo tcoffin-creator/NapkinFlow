@@ -1,5 +1,8 @@
 import rough from 'roughjs';
 
+// Approximate character width for SVG text measurement (in pixels)
+const APPROX_CHAR_WIDTH = 7;
+
 /**
  * Render flowchart using RoughJS for hand-drawn napkin style
  */
@@ -129,6 +132,19 @@ export class FlowchartRenderer {
       // For rectangle, find intersection with the appropriate edge
       const halfWidth = fromNode.width / 2;
       const halfHeight = fromNode.height / 2;
+      
+      // Handle vertical and horizontal cases separately to avoid division by zero
+      if (Math.abs(dx) < 0.01) {
+        // Vertical line - use top or bottom edge
+        const y = dy > 0 ? fromNode.y + halfHeight : fromNode.y - halfHeight;
+        return { x: fromNode.x, y };
+      }
+      
+      if (Math.abs(dy) < 0.01) {
+        // Horizontal line - use left or right edge
+        const x = dx > 0 ? fromNode.x + halfWidth : fromNode.x - halfWidth;
+        return { x, y: fromNode.y };
+      }
       
       // Determine which edge to use based on angle
       const tan = Math.abs(dy / dx);
@@ -309,8 +325,8 @@ export class FlowchartRenderer {
       // Simple text wrapping for SVG
       words.forEach(word => {
         const testLine = currentLine + (currentLine ? ' ' : '') + word;
-        // Approximate text width (rough estimate: 7px per character)
-        const estimatedWidth = testLine.length * 7;
+        // Approximate text width using constant
+        const estimatedWidth = testLine.length * APPROX_CHAR_WIDTH;
         
         if (estimatedWidth > maxWidth && currentLine) {
           lines.push(currentLine);
