@@ -1,0 +1,2 @@
+# NapkinFlow
+Auto flowchart generator
