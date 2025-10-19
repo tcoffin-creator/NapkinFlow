@@ -81,7 +81,12 @@ export default function FlowchartCanvas({ workflowText }) {
   return (
     <div className="flowchart-canvas-container">
       <div className="canvas-wrapper">
-        <canvas ref={canvasRef} className="flowchart-canvas" />
+        <canvas 
+          ref={canvasRef} 
+          className="flowchart-canvas"
+          role="img"
+          aria-label="Generated flowchart visualization"
+        />
       </div>
       
       {layout && layout.nodes.length > 0 && (

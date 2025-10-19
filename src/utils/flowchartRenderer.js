@@ -113,7 +113,7 @@ export class FlowchartRenderer {
   }
 
   getNodeEdgePoint(fromNode, toNode) {
-    // Simple approach: return the point on the node border closest to the other node
+    // Calculate the point on the node border closest to the other node
     const dx = toNode.x - fromNode.x;
     const dy = toNode.y - fromNode.y;
     const angle = Math.atan2(dy, dx);
@@ -126,14 +126,25 @@ export class FlowchartRenderer {
         y: fromNode.y + Math.sin(angle) * radius * 0.6
       };
     } else {
-      // For rectangle
+      // For rectangle, find intersection with the appropriate edge
       const halfWidth = fromNode.width / 2;
       const halfHeight = fromNode.height / 2;
       
-      return {
-        x: fromNode.x + Math.cos(angle) * halfWidth,
-        y: fromNode.y + Math.sin(angle) * halfHeight
-      };
+      // Determine which edge to use based on angle
+      const tan = Math.abs(dy / dx);
+      const threshold = halfHeight / halfWidth;
+      
+      if (tan > threshold) {
+        // Top or bottom edge
+        const y = dy > 0 ? fromNode.y + halfHeight : fromNode.y - halfHeight;
+        const x = fromNode.x + (halfHeight / tan) * (dx > 0 ? 1 : -1);
+        return { x, y };
+      } else {
+        // Left or right edge
+        const x = dx > 0 ? fromNode.x + halfWidth : fromNode.x - halfWidth;
+        const y = fromNode.y + (halfWidth * tan) * (dy > 0 ? 1 : -1);
+        return { x, y };
+      }
     }
   }
 
@@ -289,16 +300,45 @@ export class FlowchartRenderer {
         svg.appendChild(rect);
       }
       
-      // Node label
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', node.x);
-      text.setAttribute('y', node.y);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('dominant-baseline', 'middle');
-      text.setAttribute('font-size', '14');
-      text.setAttribute('fill', '#333');
-      text.textContent = node.label;
-      svg.appendChild(text);
+      // Node label with text wrapping
+      const words = node.label.split(' ');
+      const maxWidth = node.width - 20;
+      const lines = [];
+      let currentLine = '';
+      
+      // Simple text wrapping for SVG
+      words.forEach(word => {
+        const testLine = currentLine + (currentLine ? ' ' : '') + word;
+        // Approximate text width (rough estimate: 7px per character)
+        const estimatedWidth = testLine.length * 7;
+        
+        if (estimatedWidth > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      });
+      
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      
+      // Draw text lines
+      const lineHeight = 16;
+      const startY = node.y - ((lines.length - 1) * lineHeight) / 2;
+      
+      lines.forEach((line, i) => {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x);
+        text.setAttribute('y', startY + i * lineHeight);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('font-size', '14');
+        text.setAttribute('fill', '#333');
+        text.textContent = line;
+        svg.appendChild(text);
+      });
     });
     
     const serializer = new XMLSerializer();
