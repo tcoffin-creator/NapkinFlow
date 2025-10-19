@@ -1,0 +1,84 @@
+.workflow-input-container {
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.input-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.example-btn {
+  padding: 8px 16px;
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.example-btn:hover {
+  background: #e0e0e0;
+}
+
+.workflow-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.workflow-input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.input-help {
+  margin-top: 15px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-left: 3px solid #4a90e2;
+  border-radius: 4px;
+}
+
+.input-help p {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.input-help ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #666;
+  font-size: 13px;
+}
+
+.input-help li {
+  margin-bottom: 4px;
+}
+
+.input-help code {
+  background: #e8e8e8;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}

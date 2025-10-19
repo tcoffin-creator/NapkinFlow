@@ -1,16 +1,95 @@
-# React + Vite
+# NapkinFlow
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+✏️ **Transform plain-text workflows into hand-drawn flowcharts**
 
-Currently, two official plugins are available:
+NapkinFlow is a web application that takes plain-text workflow descriptions and automatically generates beautiful flowcharts in a hand-drawn napkin sketch style.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- 📝 **Simple Text Input**: Describe your workflow in plain text using intuitive syntax
+- 🎨 **Hand-Drawn Style**: Flowcharts rendered with RoughJS for an authentic napkin sketch look
+- 📐 **Auto-Layout**: Automatic graph layout using Dagre for clean, organized diagrams
+- 💾 **Export Options**: Download your flowcharts as PNG or SVG files
+- 🔒 **Privacy First**: Runs entirely in your browser - no backend, no data sent to servers
+- ⚡ **Fast & Modern**: Built with React and Vite for instant updates
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Syntax
 
-## Expanding the ESLint configuration
+Use simple text patterns to create flowcharts:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Use `→` or `->` to connect steps
+- Add `?` after a label to create decision points (diamond shapes)
+- Use `;` to separate branches
+- Start conditional branches with `yes` or `no`
+
+### Examples
+
+**Simple workflow:**
+```
+Start → Process → End
+```
+
+**With decision points:**
+```
+Start → Qualify lead? yes → Book call; no → Send email → End
+```
+
+**Another example:**
+```
+Login → Check auth? yes → Dashboard; no → Error page
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 16+ and npm
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/tcoffin-creator/NapkinFlow.git
+cd NapkinFlow
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Open your browser to `http://localhost:5173`
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist` directory.
+
+## Tech Stack
+
+- **Frontend**: React 19 with Vite
+- **Rendering**: RoughJS for hand-drawn style
+- **Layout**: Dagre for automatic graph layout
+- **Export**: html2canvas for PNG export, native SVG serialization
+- **Styling**: CSS with custom components
+
+## Local-Only Design
+
+NapkinFlow runs entirely in your browser. No data is sent to any server, ensuring your workflows remain private and secure.
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
