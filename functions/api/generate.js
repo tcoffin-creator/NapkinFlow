@@ -27,7 +27,6 @@ export async function onRequest(context) {
   try {
     body = await request.json();
   } catch (err) {
-    // fallback to text
     const text = await request.text();
     return new Response(JSON.stringify({ error: 'Invalid JSON body', bodyText: text }), {
       status: 400,
@@ -52,7 +51,6 @@ export async function onRequest(context) {
     });
   }
 
-  // Construct LLM prompt: instruct it to only return JSON { "graph": { "nodes": [...], "edges": [...] } }
   const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:
 {
   "graph": {
@@ -63,7 +61,6 @@ export async function onRequest(context) {
 Do not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.`.trim();
 
   try {
-    // Call the OpenAI Chat Completions API
     const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -71,7 +68,7 @@ Do not include any extra text, comments, or markdown. If you cannot produce a gr
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // adjust model if needed
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
@@ -81,127 +78,95 @@ Do not include any extra text, comments, or markdown. If you cannot produce a gr
       }),
     });
 
-    const contentType = openaiResp.headers.get('content-type') || '';
     const raw = await openaiResp.text();
 
     if (!openaiResp.ok) {
-      // surface provider error with raw snippet
-      return new Response(JSON.stringify({
-        error: 'OpenAI API error',
-        status: openaiResp.status,
-        raw: raw.slice(0, 2000)
-      }), {
+      return new Response(JSON.stringify({ error: 'OpenAI API error', status: openaiResp.status, raw: raw.slice(0, 2000) }), {
         status: 502,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
       });
     }
 
-    // Try to extract JSON
-    let parsed;
-    try {
-      // If OpenAI returns JSON directly (common), parse it
-      parsed = JSON.parse(raw);
-      // If content contains choices -> get assistant content
-      if (parsed?.choices && parsed.choices[0]?.message?.content) {
-        const assistantText = parsed.choices[0].message.content;
-        // Try to parse assistantText as JSON
-        try {
-          const assistantJson = JSON.parse(assistantText);
-          if (assistantJson?.graph) {
-            return new Response(JSON.stringify({ graph: assistantJson.graph }), {
-              status: 200,
-              headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': origin,
-              },
-            });
-          } else {
-            // assistant returned something parseable but no graph
-            return new Response(JSON.stringify({
-              error: 'OpenAI returned JSON but no "graph" key',
-              rawAssistant: assistantText.slice(0, 2000)
-            }), {
-              status: 502,
-              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-            });
-          }
-        } catch (e) {
-          // assistantText wasn't JSON — attempt to extract JSON substring
-          const m = assistantText.match(/\{[\s\S]*\}/);
-          if (m) {
+    // Try to parse wrapper response
+    let parsedTop = null;
+    try { parsedTop = JSON.parse(raw); } catch (e) { parsedTop = null; }
+
+    // Extract assistant text if present
+    let assistantText = '';
+    if (parsedTop?.choices && parsedTop.choices[0]?.message?.content) {
+      assistantText = parsedTop.choices[0].message.content;
+    } else {
+      assistantText = raw;
+    }
+
+    // Extract JSON substring from assistantText if any
+    const jsonMatch = assistantText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const assistantJson = JSON.parse(jsonMatch[0]);
+
+        // If assistantJson.graph exists, coerce it to an object if it is a string
+        if (assistantJson?.graph !== undefined) {
+          let graphObj = assistantJson.graph;
+
+          // If graph is a string containing JSON, parse it
+          if (typeof graphObj === 'string') {
             try {
-              const assistantJson2 = JSON.parse(m[0]);
-              if (assistantJson2?.graph) {
-                return new Response(JSON.stringify({ graph: assistantJson2.graph }), {
-                  status: 200,
-                  headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-                });
-              }
-            } catch (_) {}
+              graphObj = JSON.parse(graphObj);
+            } catch (e) {
+              // parsing failed; return helpful error with raw text
+              return new Response(JSON.stringify({
+                error: 'Assistant returned graph as a string but it could not be parsed',
+                rawAssistantText: assistantText.slice(0, 2000),
+                rawGraphString: assistantJson.graph.slice(0, 2000)
+              }), {
+                status: 502,
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+              });
+            }
           }
-          // fallback: return raw assistantText for debugging
-          return new Response(JSON.stringify({
-            error: 'Could not parse assistant output as JSON',
-            rawAssistant: assistantText.slice(0, 2000),
-          }), {
-            status: 502,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-          });
-        }
-      }
 
-      // If we've reached here but no choices.message.content, return raw parsed object
-      return new Response(JSON.stringify({
-        error: 'Unexpected OpenAI response format',
-        raw: parsed
-      }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-      });
-
-    } catch (e) {
-      // raw is not top-level JSON — maybe the service returned text directly
-      // try to extract JSON substring from raw
-      const m = raw.match(/\{[\s\S]*\}/);
-      if (m) {
-        try {
-          const assistantJson = JSON.parse(m[0]);
-          if (assistantJson?.graph) {
-            return new Response(JSON.stringify({ graph: assistantJson.graph }), {
+          // Validate result shape minimally
+          if (graphObj && typeof graphObj === 'object' && Array.isArray(graphObj.nodes) && Array.isArray(graphObj.edges)) {
+            return new Response(JSON.stringify({ graph: graphObj }), {
               status: 200,
               headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
             });
           } else {
             return new Response(JSON.stringify({
-              error: 'Parsed JSON from raw but no graph key',
-              rawSnippet: m[0].slice(0, 2000)
+              error: 'Parsed graph did not have expected shape',
+              parsedGraph: graphObj,
+              rawAssistantText: assistantText.slice(0, 2000)
             }), {
               status: 502,
               headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
             });
           }
-        } catch (err2) {
-          // give up and return raw for debugging
+        } else {
           return new Response(JSON.stringify({
-            error: 'Failed to parse OpenAI response',
-            raw: raw.slice(0, 2000)
+            error: 'Assistant JSON missing "graph" key',
+            rawAssistantJson: assistantJson,
+            rawAssistantText: assistantText.slice(0, 2000)
           }), {
             status: 502,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
           });
         }
-      } else {
-        return new Response(JSON.stringify({
-          error: 'OpenAI returned non-JSON response',
-          raw: raw.slice(0, 2000)
-        }), {
-          status: 502,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-        });
+      } catch (e) {
+        // JSON substring parse failed — fall through to return raw for debugging
       }
     }
+
+    // If we get here, no JSON graph found — return raw assistant text for debugging
+    return new Response(JSON.stringify({
+      error: 'Could not extract JSON graph from assistant output',
+      rawAssistantText: assistantText.slice(0, 2000)
+    }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+    });
+
   } catch (err) {
-    // Unexpected runtime error
     return new Response(JSON.stringify({ error: 'Server error', message: String(err) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
