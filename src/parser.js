@@ -8,6 +8,8 @@
  * - Decision nodes with trailing '?'
  */
 
+const EDGE_LABEL_KEYWORDS = ['yes', 'no', 'true', 'false', 'ok', 'cancel'];
+
 export function parseWorkflow(text) {
   const nodes = [];
   const edges = [];
@@ -42,7 +44,8 @@ export function parseWorkflow(text) {
       }
       
       // Check if token ends with ? followed by an edge label like "Check? yes"
-      const decisionMatch = token.match(/^(.+\?)\s+(yes|no|true|false|ok|cancel)$/i);
+      const edgeKeywordsPattern = EDGE_LABEL_KEYWORDS.join('|');
+      const decisionMatch = token.match(new RegExp(`^(.+\\?)\\s+(${edgeKeywordsPattern})$`, 'i'));
       if (decisionMatch) {
         // Split into decision node and edge label
         processedTokens.push(decisionMatch[1].trim());
@@ -57,7 +60,7 @@ export function parseWorkflow(text) {
 
     processedTokens.forEach((token, index) => {
       const tokenLower = token.toLowerCase();
-      const isEdgeLabel = ['yes', 'no', 'true', 'false', 'ok', 'cancel'].includes(tokenLower);
+      const isEdgeLabel = EDGE_LABEL_KEYWORDS.includes(tokenLower);
       
       // Check if token is a bracketed label like "[yes]" or "[approved]"
       const bracketOnlyMatch = token.match(/^\[([^\]]+)\]$/);

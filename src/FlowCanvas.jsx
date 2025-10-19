@@ -239,6 +239,9 @@ const FlowCanvas = ({ nodes, edges, onExportReady }) => {
 };
 
 function createWrappedText(text, x, y, maxWidth) {
+  const CHAR_WIDTH_ESTIMATE = 8;
+  const LINE_HEIGHT = 16;
+  
   const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   textElement.setAttribute('x', x);
   textElement.setAttribute('y', y);
@@ -255,8 +258,8 @@ function createWrappedText(text, x, y, maxWidth) {
 
   words.forEach(word => {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
-    // Rough estimate: ~8 pixels per character
-    if (testLine.length * 8 > maxWidth && currentLine) {
+    // Rough estimate based on character width
+    if (testLine.length * CHAR_WIDTH_ESTIMATE > maxWidth && currentLine) {
       lines.push(currentLine);
       currentLine = word;
     } else {
@@ -268,13 +271,12 @@ function createWrappedText(text, x, y, maxWidth) {
   }
 
   // Create tspan for each line
-  const lineHeight = 16;
-  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  const startY = y - ((lines.length - 1) * LINE_HEIGHT) / 2;
 
   lines.forEach((line, i) => {
     const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     tspan.setAttribute('x', x);
-    tspan.setAttribute('y', startY + i * lineHeight);
+    tspan.setAttribute('y', startY + i * LINE_HEIGHT);
     tspan.textContent = line;
     textElement.appendChild(tspan);
   });
