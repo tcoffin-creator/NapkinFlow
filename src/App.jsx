@@ -247,8 +247,6 @@ function App() {
         <p>Convert text to hand-drawn flowcharts</p>
       </header>
 
-      <div className="global-hint" aria-hidden="true">Pan: Click and drag | Zoom: Mouse wheel</div>
-
       <div className="container">
         <div className="controls">
           <textarea
@@ -303,19 +301,24 @@ function App() {
         </div>
 
         <div className="canvas-container" style={{ marginTop: 12 }}>
-          {parsedData.nodes.length > 0 ? (
-            <FlowCanvas
-              nodes={parsedData.nodes}
-              edges={parsedData.edges}
-              onExportReady={handleExportReady}
-              aiTitle={lastAIPrompt ? `AI: ${lastAIPrompt}` : ''}
-            />
-          ) : (
-            <div className="placeholder">
-              <p>Enter a workflow description and click "Render" or use "AI Generate" to let the AI produce one</p>
-              <p className="hint">Tip: Use "Example" to see a sample workflow</p>
+          <div className="canvas-stack">
+            <div className="preview-hint" aria-hidden="true">Pan: Click and drag | Zoom: Mouse wheel</div>
+            <div className="canvas-body">
+              {parsedData.nodes.length > 0 ? (
+                <FlowCanvas
+                  nodes={parsedData.nodes}
+                  edges={parsedData.edges}
+                  onExportReady={handleExportReady}
+                  aiTitle={lastAIPrompt ? `AI: ${lastAIPrompt}` : ''}
+                />
+              ) : (
+                <div className="placeholder">
+                  <p>Enter a workflow description and click "Render" or use "AI Generate" to let the AI produce one</p>
+                  <p className="hint">Tip: Use "Example" to see a sample workflow</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

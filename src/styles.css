@@ -136,6 +136,31 @@ body {
   padding: 1rem;
 }
 
+.canvas-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.preview-hint {
+  background: #f7f9ff;
+  color: #4a5a7a;
+  border: 1px solid #e6ecff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  align-self: flex-start;
+}
+
+.canvas-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .placeholder {
   text-align: center;
   color: #999;
