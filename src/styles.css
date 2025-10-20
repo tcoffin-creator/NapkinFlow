@@ -160,6 +160,22 @@ body {
   font-size: 0.9rem;
 }
 
+.global-hint {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #555;
+  margin-top: 0.5rem;
+}
+
+.modal-tip {
+  background: #eef6ff;
+  color: #0b4a8b;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 0.75rem;
+}
+
 @media (max-width: 768px) {
   .header h1 {
     font-size: 2rem;

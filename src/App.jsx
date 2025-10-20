@@ -30,6 +30,29 @@ function App() {
     setSvgElement(svg);
   }, []);
 
+  // Compute tight content bounding box for the current SVG
+  const getContentBBox = (svg) => {
+    try {
+      const elements = Array.from(svg.querySelectorAll('*')).filter((el) => typeof el.getBBox === 'function');
+      if (elements.length === 0) return null;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const el of elements) {
+        try {
+          const b = el.getBBox();
+          if (!b || !isFinite(b.x) || !isFinite(b.y) || !isFinite(b.width) || !isFinite(b.height)) continue;
+          minX = Math.min(minX, b.x);
+          minY = Math.min(minY, b.y);
+          maxX = Math.max(maxX, b.x + b.width);
+          maxY = Math.max(maxY, b.y + b.height);
+        } catch {}
+      }
+      if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return null;
+      return { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') {
@@ -56,20 +79,15 @@ function App() {
       alert('Please render a flowchart first');
       return null;
     }
-
-    // Clone and wrap content to add padding
-    const svgClone = svgElement.cloneNode(true);
-    const viewBox = svgElement.getAttribute('viewBox');
-    if (!viewBox) {
-      alert('Unable to determine SVG dimensions');
+    // Compute tight bounding box of content
+    const bbox = getContentBBox(svgElement);
+    if (!bbox) {
+      alert('Unable to measure SVG content');
       return null;
     }
-    const [, , widthStr, heightStr] = viewBox.split(' ');
-    const width = Number(widthStr);
-    const height = Number(heightStr);
 
-    const paddedWidth = Math.ceil(width + padding);
-    const paddedHeight = Math.ceil(height + padding);
+    const paddedWidth = Math.ceil(bbox.width + padding);
+    const paddedHeight = Math.ceil(bbox.height + padding);
 
     // Create a new svg wrapper
     const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -87,8 +105,9 @@ function App() {
 
     // Offset original content by half padding
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${padding / 2}, ${padding / 2})`);
-    // move children of svgClone into g
+    g.setAttribute('transform', `translate(${padding / 2 - bbox.x}, ${padding / 2 - bbox.y})`);
+    // move children of cloned svg into g
+    const svgClone = svgElement.cloneNode(true);
     while (svgClone.firstChild) {
       g.appendChild(svgClone.firstChild);
     }
@@ -228,6 +247,8 @@ function App() {
         <p>Convert text to hand-drawn flowcharts</p>
       </header>
 
+      <div className="global-hint" aria-hidden="true">Pan: Click and drag | Zoom: Mouse wheel</div>
+
       <div className="container">
         <div className="controls">
           <textarea
@@ -298,9 +319,7 @@ function App() {
         </div>
       </div>
 
-      <footer className="footer">
-        <p>Pan: Click and drag | Zoom: Mouse wheel</p>
-      </footer>
+      {/* Footer removed; hint moved to top */}
 
       {showInstructions && (
         <div
@@ -317,6 +336,7 @@ function App() {
               onClick={() => setShowInstructions(false)}
             >✕</button>
             <h2>Instructions & Syntax</h2>
+            <p className="modal-tip">Pan: Click and drag | Zoom: Mouse wheel</p>
             <p>Use the following simple syntax to create flowcharts. The buttons are:</p>
             <ul>
               <li><strong>Render</strong> — parse the text and render a flowchart locally.</li>
