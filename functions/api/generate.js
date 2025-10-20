@@ -51,14 +51,8 @@ export async function onRequest(context) {
     });
   }
 
-  const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:
-{
-  "graph": {
-    "nodes": [ { "id":"n1", "label":"Start", "type":"start" }, ... ],
-    "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]
-  }
-}
-Do not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.`.trim();
+  // System prompt: instruct JSON-only output and include workflow syntax used by the UI
+  const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:\n{\n  "graph": {\n    "nodes": [ { "id":"n1", "label":"Start", "type":"start" }, ... ],\n    "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]\n  }\n}\nDo not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.\n\nWorkflow syntax that the UI understands and expects:\n- Use '->' or '→' for connections.\n- End node labels with '?' for decision nodes.\n- Separate alternative branches with ';'.\n- Edge labels can be small keywords placed after a decision (e.g., 'yes') or bracketed before a node (e.g., '[approved]').\n- To indicate branches should converge, reuse the exact same node label for the merge target.\n\nExamples the assistant should follow when interpreting text:\n- "Start → Qualify lead? yes → Book call; no → Send email → Review → End"\n- "Start → A? yes → X; no → Y → X → End"\nWhen you output the JSON graph ensure:\n- Each node has an 'id' (string), 'label' (string), and 'type' (either 'process' or 'decision').\n- Each edge has 'from' and 'to' set to node ids and an optional 'label' for the edge text.\n- Use the same node labels as in the prompt to determine merges so branches that end with identical labels should point to a single node.\n`.trim();
 
   try {
     const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -99,73 +93,103 @@ Do not include any extra text, comments, or markdown. If you cannot produce a gr
       assistantText = raw;
     }
 
-    // Extract JSON substring from assistantText if any
-    const jsonMatch = assistantText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        const assistantJson = JSON.parse(jsonMatch[0]);
+    // --- Improved JSON extraction/parsing ---
+    // 1) Remove outer markdown/code fences (``` or ```json)
+    // 2) Try parsing the inner fenced content first
+    // 3) Fall back to extracting first {...} block
+    // 4) If graph is a string, try parsing that string
 
-        // If assistantJson.graph exists, coerce it to an object if it is a string
-        if (assistantJson?.graph !== undefined) {
-          let graphObj = assistantJson.graph;
+    // Normalize: strip common wrapper fences
+    let sanitized = assistantText.replace(/\r\n/g, '\n').trim();
 
-          // If graph is a string containing JSON, parse it
-          if (typeof graphObj === 'string') {
-            try {
-              graphObj = JSON.parse(graphObj);
-            } catch (e) {
-              // parsing failed; return helpful error with raw text
-              return new Response(JSON.stringify({
-                error: 'Assistant returned graph as a string but it could not be parsed',
-                rawAssistantText: assistantText.slice(0, 2000),
-                rawGraphString: assistantJson.graph.slice(0, 2000)
-              }), {
-                status: 502,
-                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-              });
-            }
-          }
+    // If assistant wrapped JSON in code fences, capture the inner content(s)
+    const fenceMatch = sanitized.match(/```(?:json)?\n([\s\S]*?)\n```/i);
+    if (fenceMatch && fenceMatch[1]) {
+      sanitized = fenceMatch[1].trim();
+    } else {
+      // Also remove single-line backticks or surrounding triple backticks without language
+      sanitized = sanitized.replace(/^```+|```+$/g, '').trim();
+    }
 
-          // Validate result shape minimally
-          if (graphObj && typeof graphObj === 'object' && Array.isArray(graphObj.nodes) && Array.isArray(graphObj.edges)) {
-            return new Response(JSON.stringify({ graph: graphObj }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-            });
-          } else {
-            return new Response(JSON.stringify({
-              error: 'Parsed graph did not have expected shape',
-              parsedGraph: graphObj,
-              rawAssistantText: assistantText.slice(0, 2000)
-            }), {
-              status: 502,
-              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-            });
-          }
-        } else {
+    // Attempt 1: parse whole sanitized string
+    let assistantJson = null;
+    try {
+      assistantJson = JSON.parse(sanitized);
+    } catch (e) {
+      assistantJson = null;
+    }
+
+    // Attempt 2: if parsing whole string failed, try to find a JSON object substring {...}
+    if (!assistantJson) {
+      const jsonMatch = sanitized.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          assistantJson = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          // parsing failed — include raw snippets in error below
+        }
+      }
+    }
+
+    // If we still don't have JSON, return raw assistant text for debugging
+    if (!assistantJson) {
+      return new Response(JSON.stringify({
+        error: 'Could not extract JSON graph from assistant output',
+        // return both sanitized and original assistant text (truncated) to aid debugging
+        sanitizedAssistantText: sanitized.slice(0, 2000),
+        rawAssistantText: assistantText.slice(0, 2000),
+      }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+      });
+    }
+
+    // If assistantJson.graph exists, coerce it to an object if it is a string
+    if (assistantJson?.graph !== undefined) {
+      let graphObj = assistantJson.graph;
+
+      // If graph is a string containing JSON, parse it
+      if (typeof graphObj === 'string') {
+        try {
+          graphObj = JSON.parse(graphObj);
+        } catch (e) {
           return new Response(JSON.stringify({
-            error: 'Assistant JSON missing "graph" key',
-            rawAssistantJson: assistantJson,
-            rawAssistantText: assistantText.slice(0, 2000)
+            error: 'Assistant returned graph as a string but it could not be parsed',
+            rawAssistantText: assistantText.slice(0, 2000),
+            rawGraphString: assistantJson.graph.slice(0, 2000)
           }), {
             status: 502,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
           });
         }
-      } catch (e) {
-        // JSON substring parse failed — fall through to return raw for debugging
       }
+
+      // Validate result shape minimally
+      if (graphObj && typeof graphObj === 'object' && Array.isArray(graphObj.nodes) && Array.isArray(graphObj.edges)) {
+        return new Response(JSON.stringify({ graph: graphObj }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+        });
+      } else {
+        return new Response(JSON.stringify({
+          error: 'Parsed graph did not have expected shape',
+          parsedGraph: graphObj,
+          rawAssistantText: assistantText.slice(0, 2000)
+        }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+        });
+      }
+    } else {
+      return new Response(JSON.stringify({
+        error: 'Assistant JSON missing "graph" key',
+        rawAssistantJson: assistantJson,
+        rawAssistantText: assistantText.slice(0, 2000)
+      }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+      });
     }
-
-    // If we get here, no JSON graph found — return raw assistant text for debugging
-    return new Response(JSON.stringify({
-      error: 'Could not extract JSON graph from assistant output',
-      rawAssistantText: assistantText.slice(0, 2000)
-    }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
-    });
-
   } catch (err) {
     return new Response(JSON.stringify({ error: 'Server error', message: String(err) }), {
       status: 500,

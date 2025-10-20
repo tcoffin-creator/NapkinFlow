@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import FlowCanvas from './FlowCanvas';
 import { parseWorkflow } from './parser';
 import { generateFlowchartViaProxy } from './ai';
@@ -11,6 +11,7 @@ function App() {
   const [parsedData, setParsedData] = useState({ nodes: [], edges: [] });
   const [svgElement, setSvgElement] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const handleRender = () => {
     const data = parseWorkflow(inputText);
@@ -23,6 +24,14 @@ function App() {
 
   const handleExportReady = useCallback((svg) => {
     setSvgElement(svg);
+  }, []);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') setShowInstructions(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const exportSVG = () => {
@@ -171,6 +180,9 @@ function App() {
             <button onClick={handleExample} className="btn btn-secondary" disabled={loading}>
               Example
             </button>
+            <button onClick={() => setShowInstructions(true)} className="btn btn-secondary" disabled={loading}>
+              Syntax
+            </button>
             <button onClick={exportSVG} className="btn btn-export">
               Export SVG
             </button>
@@ -199,6 +211,42 @@ function App() {
       <footer className="footer">
         <p>Pan: Click and drag | Zoom: Mouse wheel</p>
       </footer>
+
+      {showInstructions && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Workflow syntax instructions"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowInstructions(false); }}
+        >
+          <div className="modal-box" role="document">
+            <button
+              className="modal-close"
+              aria-label="Close instructions"
+              onClick={() => setShowInstructions(false)}
+            >✕</button>
+            <h2>Workflow syntax</h2>
+            <p>Use the following simple syntax to create flowcharts:</p>
+            <ul>
+              <li>Use <code>-></code> or <code>→</code> for connections (e.g., <code>Start → Step</code>).</li>
+              <li>End node labels with <code>?</code> for decision nodes (e.g., <code>Approve?</code>).</li>
+              <li>Separate alternative branches with <code>;</code> (e.g., <code>A → B; C → D</code>).</li>
+              <li>Edge labels: place small labels like <code>yes</code> or <code>no</code> after a decision, or use bracketed labels like <code>[approved]</code> before a node.</li>
+              <li>To have branches converge, reuse the exact same node label where they should join (e.g., both branches end with <code>Review</code>).</li>
+            </ul>
+            <h3>Examples</h3>
+            <pre style={{ whiteSpace: 'pre-wrap', background: '#fff9d9', padding: '8px', borderRadius: '6px' }}>
+Start → Qualify lead? yes → Book call; no → Send email → Review → End
+
+Start → A? yes → X; no → Y → X → End
+            </pre>
+            <p>
+              These rules are also used by the AI when you click "AI Generate" — the assistant is instructed to produce a JSON graph that follows the same conventions.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
