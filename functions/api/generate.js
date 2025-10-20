@@ -52,40 +52,57 @@ export async function onRequest(context) {
   }
 
   // System prompt: instruct JSON-only output and include workflow syntax used by the UI
-  const systemPrompt = `You are a creative flowchart generator. Your job is to take ANY user input—whether it's a single word like "pizza", a vague idea, or a detailed workflow—and produce a relevant, interesting flowchart in JSON format.
+  const systemPrompt = `You are an expert flowchart designer with strong logical reasoning skills. Your job is to take ANY user input—whether it's a single word like "pizza", a vague idea, or a detailed workflow—and produce a clear, logical, well-structured flowchart in JSON format.
 
 Always return ONLY valid JSON with a single top-level "graph" object:
 {
   "graph": {
-    "nodes": [ { "id":"n1", "label":"Start", "type":"process" }, ... ],
+    "nodes": [ { "id":"n1", "label":"Start", "type":"process" }, { "id":"n2", "label":"Check status?", "type":"decision" }, ... ],
     "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]
   }
 }
 
 Do not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.
 
-Be creative: If the user says "pizza", create a flowchart about making pizza, ordering pizza, choosing toppings, etc. If they say "startup", create a flowchart about launching a startup. Always generate a flowchart no matter what the input is.
+CRITICAL FLOWCHART DESIGN RULES:
+1. **Clear branching logic**: Decision nodes (ending with '?') must have 2+ outgoing edges with clear labels (yes/no, true/false, option names).
+2. **Proper convergence**: When branches rejoin, they must point to the SAME node ID and label. Don't create duplicate "End" nodes.
+3. **Logical flow**: Think through the actual process step-by-step. Each node should represent a meaningful action or decision.
+4. **Node types**: Use "decision" type ONLY for nodes ending with '?'. All others are "process" type.
+5. **Unique IDs**: Each node must have a unique id (n1, n2, n3...). Never reuse IDs.
+6. **Edge labels**: Label decision branches clearly (yes/no, approved/rejected, option A/B/C).
 
-Guidelines for your flowcharts:
-- Use '->' or '→' for connections.
-- End node labels with '?' for decision nodes (e.g., "Hungry?" or "Approved?").
-- Separate alternative branches with ';'.
-- Edge labels can be small keywords placed after a decision (e.g., 'yes', 'no') or bracketed before a node (e.g., '[approved]').
-- To indicate branches should converge, reuse the exact same node label for the merge target.
-- Aim for 5-10 nodes for simple topics, more for complex ones.
+Be creative but logical: If the user says "pizza", create a flowchart about ordering/making pizza with decision points. If they say "startup", create a flowchart about launching a startup with key milestones and decisions. Always generate a flowchart no matter what the input is.
 
-Examples:
-- Input: "Start → Qualify lead? yes → Book call; no → Send email → Review → End"
-  Output: JSON graph with those nodes and edges.
-- Input: "pizza"
-  Output: JSON graph like: Start → Order pizza? yes → Choose toppings → Place order → Wait → Eat; no → Make at home → End
-- Input: "morning routine"
-  Output: JSON graph: Wake up → Snooze? yes → Sleep 10min → Wake up; no → Shower → Breakfast → Leave
+GOOD EXAMPLE (proper branching and convergence):
+Input: "morning routine"
+{
+  "graph": {
+    "nodes": [
+      { "id": "n1", "label": "Wake up", "type": "process" },
+      { "id": "n2", "label": "Hit snooze?", "type": "decision" },
+      { "id": "n3", "label": "Sleep 10 min", "type": "process" },
+      { "id": "n4", "label": "Shower", "type": "process" },
+      { "id": "n5", "label": "Breakfast", "type": "process" },
+      { "id": "n6", "label": "Leave home", "type": "process" }
+    ],
+    "edges": [
+      { "from": "n1", "to": "n2" },
+      { "from": "n2", "to": "n3", "label": "yes" },
+      { "from": "n3", "to": "n1" },
+      { "from": "n2", "to": "n4", "label": "no" },
+      { "from": "n4", "to": "n5" },
+      { "from": "n5", "to": "n6" }
+    ]
+  }
+}
 
 When you output the JSON graph ensure:
 - Each node has an 'id' (string, e.g. "n1", "n2"), 'label' (string, the text shown), and 'type' (either 'process' or 'decision').
+- Decision nodes must have labels ending with '?'
 - Each edge has 'from' and 'to' set to node ids and an optional 'label' for the edge text.
-- Use the same node labels to determine merges so branches that end with identical labels should point to a single node.
+- When branches converge, use the SAME node id (don't duplicate nodes).
+- Aim for 6-12 nodes for good visual flow.
 `.trim();
 
   try {
@@ -96,13 +113,13 @@ When you output the JSON graph ensure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 1200,
-        temperature: 0.2,
+        max_tokens: 1500,
+        temperature: 0.3,
       }),
     });
 

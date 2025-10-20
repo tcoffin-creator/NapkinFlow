@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import FlowCanvas from './FlowCanvas';
 import { parseWorkflow } from './parser';
 import { generateFlowchartViaProxy } from './ai';
+import { jsPDF } from 'jspdf';
 import './styles.css';
 
 const EXAMPLE_TEXT = 'Start → Qualify lead? yes → Book call; no → Send email → End';
@@ -50,7 +51,7 @@ function App() {
     return () => document.removeEventListener('click', onDocClick);
   }, []);
 
-  const exportSVGWithPadding = (padding = 24) => {
+  const exportSVGWithPadding = (padding = 12) => {
     if (!svgElement) {
       alert('Please render a flowchart first');
       return null;
@@ -106,7 +107,7 @@ function App() {
   };
 
   const exportSVG = () => {
-    const res = exportSVGWithPadding(28);
+    const res = exportSVGWithPadding(12);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -116,7 +117,7 @@ function App() {
   };
 
   const exportPNG = () => {
-    const res = exportSVGWithPadding(28);
+    const res = exportSVGWithPadding(12);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -154,7 +155,7 @@ function App() {
   };
 
   const exportPDF = async () => {
-    const res = exportSVGWithPadding(28);
+    const res = exportSVGWithPadding(12);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -174,33 +175,16 @@ function App() {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, res.width, res.height);
       ctx.drawImage(img, 0, 0);
-      // Use jsPDF if available
-      try {
-        const { jsPDF } = await import('jspdf');
-        const pdf = new jsPDF({
-          unit: 'px',
-          format: [res.width, res.height],
-          orientation: res.width > res.height ? 'landscape' : 'portrait'
-        });
-        const dataURL = canvas.toDataURL('image/png');
-        pdf.addImage(dataURL, 'PNG', 0, 0, res.width, res.height);
-        pdf.save('flowchart.pdf');
-      } catch (err) {
-        // fallback: open PNG in new tab and ask user to print to PDF
-        const dataURL = canvas.toDataURL('image/png');
-        const w = window.open('');
-        if (w) {
-          w.document.body.style.margin = '0';
-          const imgEl = w.document.createElement('img');
-          imgEl.src = dataURL;
-          imgEl.style.maxWidth = '100%';
-          w.document.body.appendChild(imgEl);
-        } else {
-          alert('Unable to open a new window for PDF fallback. Install jspdf (npm install jspdf) for direct PDF export.');
-        }
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      // Use jsPDF to generate PDF
+      const pdf = new jsPDF({
+        unit: 'px',
+        format: [res.width, res.height],
+        orientation: res.width > res.height ? 'landscape' : 'portrait'
+      });
+      const dataURL = canvas.toDataURL('image/png');
+      pdf.addImage(dataURL, 'PNG', 0, 0, res.width, res.height);
+      pdf.save('flowchart.pdf');
+      URL.revokeObjectURL(url);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
