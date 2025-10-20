@@ -52,7 +52,31 @@ export async function onRequest(context) {
   }
 
   // System prompt: instruct JSON-only output and include workflow syntax used by the UI
-  const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:\n{\n  "graph": {\n    "nodes": [ { "id":"n1", "label":"Start", "type":"start" }, ... ],\n    "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]\n  }\n}\nDo not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.\n\nWorkflow syntax that the UI understands and expects:\n- Use '->' or '→' for connections.\n- End node labels with '?' for decision nodes.\n- Separate alternative branches with ';'.\n- Edge labels can be small keywords placed after a decision (e.g., 'yes') or bracketed before a node (e.g., '[approved]').\n- To indicate branches should converge, reuse the exact same node label for the merge target.\n\nExamples the assistant should follow when interpreting text:\n- "Start → Qualify lead? yes → Book call; no → Send email → Review → End"\n- "Start → A? yes → X; no → Y → X → End"\nWhen you output the JSON graph ensure:\n- Each node has an 'id' (string), 'label' (string), and 'type' (either 'process' or 'decision').\n- Each edge has 'from' and 'to' set to node ids and an optional 'label' for the edge text.\n- Use the same node labels as in the prompt to determine merges so branches that end with identical labels should point to a single node.\n`.trim();
+  const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:
+{
+  "graph": {
+    "nodes": [ { "id":"n1", "label":"Start", "type":"start" }, ... ],
+    "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]
+  }
+}
+Do not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.
+
+Workflow syntax that the UI understands and expects:
+- Use '->' or '→' for connections.
+- End node labels with '?' for decision nodes.
+- Separate alternative branches with ';'.
+- Edge labels can be small keywords placed after a decision (e.g., 'yes') or bracketed before a node (e.g., '[approved]').
+- To indicate branches should converge, reuse the exact same node label for the merge target.
+
+Examples the assistant should follow when interpreting text:
+- "Start → Qualify lead? yes → Book call; no → Send email → Review → End"
+- "Start → A? yes → X; no → Y → X → End"
+
+When you output the JSON graph ensure:
+- Each node has an 'id' (string), 'label' (string), and 'type' (either 'process' or 'decision').
+- Each edge has 'from' and 'to' set to node ids and an optional 'label' for the edge text.
+- Use the same node labels as in the prompt to determine merges so branches that end with identical labels should point to a single node.
+`.trim();
 
   try {
     const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
