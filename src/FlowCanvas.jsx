@@ -53,7 +53,7 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
     // Draw title area (if provided) reserve space at top
-    const TITLE_HEIGHT = aiTitle ? 56 : 0;
+  const TITLE_HEIGHT = aiTitle ? 72 : 0;
 
     // Draw nodes
     nodes.forEach(node => {
@@ -174,18 +174,30 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
 
     // If we have a title, draw it at the top center
     if (aiTitle) {
-      const titleGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      const titleBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      const titlePadding = 12;
-      // Title width based on bounding box width
-      const titleWidth = Math.max(200, (maxX - minX));
-      const titleX = minX + (maxX - minX) / 2 - titleWidth / 2;
-      const titleY = minY - TITLE_HEIGHT + 8;
+  const titleGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const titleBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  const titlePaddingX = 18;
+  const titlePaddingY = 10;
+  // Measure text width by temporary text element
+  const measureText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  measureText.setAttribute('x', 0);
+  measureText.setAttribute('y', 0);
+  measureText.setAttribute('font-size', '18');
+  measureText.setAttribute('font-family', 'Comic Sans MS, cursive, sans-serif');
+  measureText.textContent = aiTitle;
+  svg.appendChild(measureText);
+  const bbox = measureText.getBBox();
+  svg.removeChild(measureText);
+
+  const titleWidth = Math.max(200, bbox.width + titlePaddingX * 2);
+  const titleHeight = Math.max(36, bbox.height + titlePaddingY * 2);
+  const titleX = minX + (maxX - minX) / 2 - titleWidth / 2;
+  const titleY = minY - TITLE_HEIGHT + 8;
 
       titleBg.setAttribute('x', titleX);
       titleBg.setAttribute('y', titleY);
-      titleBg.setAttribute('width', titleWidth);
-      titleBg.setAttribute('height', TITLE_HEIGHT - 12);
+  titleBg.setAttribute('width', titleWidth);
+  titleBg.setAttribute('height', titleHeight);
       titleBg.setAttribute('fill', '#fff8d6');
       titleBg.setAttribute('stroke', '#e2c94a');
       titleBg.setAttribute('rx', 8);
@@ -193,10 +205,10 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
       titleGroup.appendChild(titleBg);
 
       const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      titleText.setAttribute('x', titleX + titleWidth / 2);
-      titleText.setAttribute('y', titleY + (TITLE_HEIGHT - 12) / 2 + 4);
+  titleText.setAttribute('x', titleX + titleWidth / 2);
+  titleText.setAttribute('y', titleY + titleHeight / 2 + 5);
       titleText.setAttribute('text-anchor', 'middle');
-      titleText.setAttribute('font-size', '16');
+  titleText.setAttribute('font-size', '18');
       titleText.setAttribute('fill', '#333');
       titleText.setAttribute('font-family', 'Comic Sans MS, cursive, sans-serif');
       titleText.textContent = aiTitle;
@@ -204,11 +216,11 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
 
       svg.appendChild(titleGroup);
 
-      // Update bounds to include title
-      minY = Math.min(minY, titleY);
-      minX = Math.min(minX, titleX);
-      maxX = Math.max(maxX, titleX + titleWidth);
-      maxY = Math.max(maxY, titleY + TITLE_HEIGHT - 12);
+  // Update bounds to include title and add extra spacing below title
+  minY = Math.min(minY, titleY);
+  minX = Math.min(minX, titleX);
+  maxX = Math.max(maxX, titleX + titleWidth);
+  maxY = Math.max(maxY, titleY + titleHeight + 8);
     }
 
     // Add margin

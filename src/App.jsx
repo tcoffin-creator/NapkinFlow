@@ -74,7 +74,7 @@ function App() {
     return () => document.removeEventListener('click', onDocClick);
   }, []);
 
-  const exportSVGWithPadding = (padding = 12) => {
+  const exportSVGWithPadding = (padding = 40) => {
     if (!svgElement) {
       alert('Please render a flowchart first');
       return null;
@@ -126,7 +126,7 @@ function App() {
   };
 
   const exportSVG = () => {
-    const res = exportSVGWithPadding(12);
+    const res = exportSVGWithPadding(40);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -136,7 +136,7 @@ function App() {
   };
 
   const exportPNG = () => {
-    const res = exportSVGWithPadding(12);
+    const res = exportSVGWithPadding(40);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -174,7 +174,7 @@ function App() {
   };
 
   const exportPDF = async () => {
-    const res = exportSVGWithPadding(12);
+    const res = exportSVGWithPadding(40);
     if (!res) return;
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(res.wrapper);
@@ -309,7 +309,7 @@ function App() {
                   nodes={parsedData.nodes}
                   edges={parsedData.edges}
                   onExportReady={handleExportReady}
-                  aiTitle={lastAIPrompt ? `AI: ${lastAIPrompt}` : ''}
+                  aiTitle={lastAIPrompt || ''}
                 />
               ) : (
                 <div className="placeholder">
