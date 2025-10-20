@@ -177,3 +177,97 @@ body {
     width: 100%;
   }
 }
+
+/* Modal overlay styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.modal-close:hover {
+  background: #e0e0e0;
+}
+
+.modal-box h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.modal-box h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #555;
+}
+
+.modal-box ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.modal-box li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.modal-box code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.export-dropdown {
+  min-width: 140px;
+}
+
+.export-dropdown .btn {
+  background: transparent;
+  color: #333;
+  text-align: left;
+  border-radius: 0;
+  transition: background 0.15s;
+}
+
+.export-dropdown .btn:hover {
+  background: #f5f5f5;
+  transform: none;
+  box-shadow: none;
+}

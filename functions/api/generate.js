@@ -52,30 +52,40 @@ export async function onRequest(context) {
   }
 
   // System prompt: instruct JSON-only output and include workflow syntax used by the UI
-  const systemPrompt = `You are a JSON-only generator. Given a plain-text workflow prompt, produce only valid JSON with a single top-level "graph" object:
+  const systemPrompt = `You are a creative flowchart generator. Your job is to take ANY user input—whether it's a single word like "pizza", a vague idea, or a detailed workflow—and produce a relevant, interesting flowchart in JSON format.
+
+Always return ONLY valid JSON with a single top-level "graph" object:
 {
   "graph": {
-    "nodes": [ { "id":"n1", "label":"Start", "type":"start" }, ... ],
+    "nodes": [ { "id":"n1", "label":"Start", "type":"process" }, ... ],
     "edges": [ { "from":"n1", "to":"n2", "label":"yes" }, ... ]
   }
 }
+
 Do not include any extra text, comments, or markdown. If you cannot produce a graph, return { "graph": { "nodes": [], "edges": [] } }.
 
-Workflow syntax that the UI understands and expects:
-- Use '->' or '→' for connections.
-- End node labels with '?' for decision nodes.
-- Separate alternative branches with ';'.
-- Edge labels can be small keywords placed after a decision (e.g., 'yes') or bracketed before a node (e.g., '[approved]').
-- To indicate branches should converge, reuse the exact same node label for the merge target.
+Be creative: If the user says "pizza", create a flowchart about making pizza, ordering pizza, choosing toppings, etc. If they say "startup", create a flowchart about launching a startup. Always generate a flowchart no matter what the input is.
 
-Examples the assistant should follow when interpreting text:
-- "Start → Qualify lead? yes → Book call; no → Send email → Review → End"
-- "Start → A? yes → X; no → Y → X → End"
+Guidelines for your flowcharts:
+- Use '->' or '→' for connections.
+- End node labels with '?' for decision nodes (e.g., "Hungry?" or "Approved?").
+- Separate alternative branches with ';'.
+- Edge labels can be small keywords placed after a decision (e.g., 'yes', 'no') or bracketed before a node (e.g., '[approved]').
+- To indicate branches should converge, reuse the exact same node label for the merge target.
+- Aim for 5-10 nodes for simple topics, more for complex ones.
+
+Examples:
+- Input: "Start → Qualify lead? yes → Book call; no → Send email → Review → End"
+  Output: JSON graph with those nodes and edges.
+- Input: "pizza"
+  Output: JSON graph like: Start → Order pizza? yes → Choose toppings → Place order → Wait → Eat; no → Make at home → End
+- Input: "morning routine"
+  Output: JSON graph: Wake up → Snooze? yes → Sleep 10min → Wake up; no → Shower → Breakfast → Leave
 
 When you output the JSON graph ensure:
-- Each node has an 'id' (string), 'label' (string), and 'type' (either 'process' or 'decision').
+- Each node has an 'id' (string, e.g. "n1", "n2"), 'label' (string, the text shown), and 'type' (either 'process' or 'decision').
 - Each edge has 'from' and 'to' set to node ids and an optional 'label' for the edge text.
-- Use the same node labels as in the prompt to determine merges so branches that end with identical labels should point to a single node.
+- Use the same node labels to determine merges so branches that end with identical labels should point to a single node.
 `.trim();
 
   try {

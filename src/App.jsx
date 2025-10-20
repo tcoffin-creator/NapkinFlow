@@ -123,16 +123,21 @@ function App() {
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
 
+    const SCALE = 3; // 3x resolution for crisp exports
+
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = res.width;
-      canvas.height = res.height;
+      canvas.width = res.width * SCALE;
+      canvas.height = res.height * SCALE;
       const ctx = canvas.getContext('2d');
+
+      // Scale context for high-res rendering
+      ctx.scale(SCALE, SCALE);
 
       // White background
       ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, res.width, res.height);
       ctx.drawImage(img, 0, 0);
 
       canvas.toBlob((blob) => {
@@ -156,15 +161,18 @@ function App() {
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
 
+    const SCALE = 3; // 3x resolution for crisp PDF
+
     const img = new Image();
     img.onload = async () => {
-      // Create canvas to get image data
+      // Create canvas to get image data at higher resolution
       const canvas = document.createElement('canvas');
-      canvas.width = res.width;
-      canvas.height = res.height;
+      canvas.width = res.width * SCALE;
+      canvas.height = res.height * SCALE;
       const ctx = canvas.getContext('2d');
+      ctx.scale(SCALE, SCALE);
       ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, res.width, res.height);
       ctx.drawImage(img, 0, 0);
       // Use jsPDF if available
       try {
@@ -287,9 +295,6 @@ function App() {
             </div>
 
           </div>
-          <div style={{ marginTop: 8, color: '#666', fontSize: 13 }}>
-            <strong>Buttons:</strong> Render — parse the text and draw; AI Generate — ask the AI to produce a graph; Example — load a sample; Instructions — show syntax help; Export — PNG / SVG / PDF
-          </div>
         </div>
 
         <div className="canvas-container" style={{ marginTop: 12 }}>
@@ -339,7 +344,7 @@ function App() {
 
             <h3>Workflow syntax</h3>
             <ul>
-              <li>Use <code>-></code> or <code>→</code> for connections (e.g., <code>Start → Step</code>).</li>
+              <li>Use <code>{"->"}</code> or <code>→</code> for connections (e.g., <code>Start → Step</code>).</li>
               <li>End node labels with <code>?</code> for decision nodes (e.g., <code>Approve?</code>).</li>
               <li>Separate alternative branches with <code>;</code> (e.g., <code>A → B; C → D</code>).</li>
               <li>Edge labels: place small labels like <code>yes</code> or <code>no</code> after a decision, or use bracketed labels like <code>[approved]</code> before a node.</li>

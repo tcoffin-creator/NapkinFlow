@@ -7,6 +7,7 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 600 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
@@ -223,17 +224,74 @@ const FlowCanvas = ({ nodes, edges, onExportReady, aiTitle }) => {
     svg.setAttribute('viewBox', `${minX} ${minY} ${vbWidth} ${vbHeight}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
+    // Update viewBox state for pan/zoom
+    setViewBox({ x: minX, y: minY, width: vbWidth, height: vbHeight });
+    setScale(1);
+
     // Callback so caller can export
     if (typeof onExportReady === 'function') {
       onExportReady(svg);
     }
   }, [nodes, edges, onExportReady, aiTitle, svgRef]);
 
-  // basic pan/zoom handlers omitted for brevity - reuse your existing handlers if present
-  const handleWheel = (e) => { /* existing behavior */ };
-  const handleMouseDown = (e) => { setIsPanning(true); setPanStart({ x: e.clientX, y: e.clientY }); };
-  const handleMouseMove = (e) => { if (!isPanning) return; /* existing behavior */ };
-  const handleMouseUp = () => { setIsPanning(false); };
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 1.1 : 0.9;
+    const newScale = scale * delta;
+    
+    // Limit zoom range
+    if (newScale < 0.1 || newScale > 10) return;
+    
+    setScale(newScale);
+    
+    // Zoom towards mouse position
+    const svg = svgRef.current;
+    if (!svg) return;
+    
+    const rect = svg.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const svgX = viewBox.x + (mouseX / rect.width) * viewBox.width;
+    const svgY = viewBox.y + (mouseY / rect.height) * viewBox.height;
+    
+    const newWidth = viewBox.width * delta;
+    const newHeight = viewBox.height * delta;
+    
+    const newX = svgX - (mouseX / rect.width) * newWidth;
+    const newY = svgY - (mouseY / rect.height) * newHeight;
+    
+    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+    svg.setAttribute('viewBox', `${newX} ${newY} ${newWidth} ${newHeight}`);
+  };
+
+  const handleMouseDown = (e) => {
+    setIsPanning(true);
+    setPanStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isPanning) return;
+    
+    const svg = svgRef.current;
+    if (!svg) return;
+    
+    const rect = svg.getBoundingClientRect();
+    const dx = (e.clientX - panStart.x) * (viewBox.width / rect.width);
+    const dy = (e.clientY - panStart.y) * (viewBox.height / rect.height);
+    
+    const newX = viewBox.x - dx;
+    const newY = viewBox.y - dy;
+    
+    setViewBox({ ...viewBox, x: newX, y: newY });
+    svg.setAttribute('viewBox', `${newX} ${newY} ${viewBox.width} ${viewBox.height}`);
+    
+    setPanStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
 
   return (
     <svg
